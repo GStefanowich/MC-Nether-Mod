@@ -1,0 +1,15 @@
+{
+  "required": true,
+  "minVersion": "0.8",
+  "package": "me.TheElm.NetherMod.mixins",
+  "compatibilityLevel": "JAVA_8",
+  "mixins": [
+    "PiglinEmotions",
+    "PiglinSigns",
+    "ChestPlacement",
+    "PlayerChests"
+  ],
+  "injectors": {
+    "defaultRequire": 1
+  }
+}

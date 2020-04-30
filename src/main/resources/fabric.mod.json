@@ -1,0 +1,31 @@
+{
+  "schemaVersion": 1,
+  "id": "thats-my-chest",
+  "version": "${version}",
+
+  "name": "That's My Chest!",
+  "description": "Changes some Nether Mechanics related to Piglins.",
+  "authors": [
+    "TheElm"
+  ],
+  "contact": {
+    "homepage": "",
+    "sources": "https://github.com/GStefanowich/MC-Nether-Mod",
+    "issues": "https://github.com/GStefanowich/MC-Nether-Mod/issues"
+  },
+
+  "license": "MIT",
+  "icon": "assets/TheElm/icon.png",
+
+  "environment": "*",
+  "entrypoints": {},
+  "mixins": [
+    "NetherCore.mixins.json"
+  ],
+
+  "depends": {
+    "fabricloader": ">=0.7.1",
+    "minecraft": "1.16-alpha.20.18.a"
+  },
+  "suggests": {}
+}
