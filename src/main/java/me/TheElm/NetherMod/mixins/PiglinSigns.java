@@ -31,11 +31,14 @@ import net.minecraft.entity.mob.PiglinBrain;
 import net.minecraft.entity.mob.PiglinEntity;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.item.ItemStack;
+import net.minecraft.item.Items;
 import net.minecraft.particle.ParticleTypes;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
+
+import java.util.List;
 
 @Mixin(PiglinBrain.class)
 public class PiglinSigns {
@@ -57,12 +60,12 @@ public class PiglinSigns {
     /**
      * A Mixin for when the piglin completes a trade
      * @param piglin The piglin that completed a trade
-     * @param stack The itemstack that the piglin picked up
+     * @param droppedStacks The list of itemstacks that the piglin gave from the trade
      * @param callback The Mixin callback
      */
     @Inject(at = @At("HEAD"), method = "doBarter")
-    private static void onBarter(PiglinEntity piglin, ItemStack stack, CallbackInfo callback) {
-        ((EmotionalPiglins)piglin).incrementGold();
+    private static void onBarter(PiglinEntity piglin, List<ItemStack> droppedStacks, CallbackInfo callback) {
+        // Increment the item that the piglin picked up
+        ((EmotionalPiglins)piglin).incrementGold(new ItemStack(Items.GOLD_INGOT, 1));
     }
-    
 }

@@ -115,8 +115,8 @@ public abstract class PiglinEmotions extends HostileEntity implements CrossbowUs
     }
     
     @Override
-    public void incrementGold() {
-        this.addGoldToInventory(new ItemStack(Items.GOLD_INGOT, 1), true);
+    public void incrementGold(ItemStack stack) {
+        this.addGoldToInventory(stack.copy(), true);
         this.craftingCheck();
     }
     

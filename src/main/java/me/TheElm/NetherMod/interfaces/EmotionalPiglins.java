@@ -25,12 +25,30 @@
 
 package me.TheElm.NetherMod.interfaces;
 
+import net.minecraft.item.ItemStack;
 import net.minecraft.particle.ParticleEffect;
 
 public interface EmotionalPiglins {
     
-    void produceParticles(ParticleEffect parameters);
+    /**
+     * Produce Particles at the Piglin
+     * @param particle The particle type to spawn at the Piglin
+     */
+    void produceParticles(ParticleEffect particle);
     
-    void incrementGold();
+    /**
+     * Called when giving an itemstack to a piglin
+     * @param stack An ItemStack that was traded to the Piglin
+     */
+    void incrementGold(ItemStack stack);
+    
+    /**
+     * Called when giving stacks of items to a piglin
+     * @param stacks Multiple ItemStacks that were traded to the Piglin
+     */
+    default void incrementGold(Iterable<ItemStack> stacks) {
+        for (ItemStack stack : stacks)
+            this.incrementGold(stack);
+    }
     
 }
