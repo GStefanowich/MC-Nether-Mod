@@ -1,6 +1,6 @@
 /*
  * This software is licensed under the MIT License
- * https://github.com/GStefanowich/MC-Server-Protection
+ * https://github.com/GStefanowich/MC-Nether-Mod
  *
  * Copyright (c) 2019 Gregory Stefanowich
  *
@@ -35,22 +35,28 @@ import net.minecraft.entity.EquipmentSlot;
 import net.minecraft.entity.damage.DamageSource;
 import net.minecraft.entity.mob.HostileEntity;
 import net.minecraft.entity.mob.PiglinEntity;
-import net.minecraft.inventory.BasicInventory;
+import net.minecraft.inventory.SimpleInventory;
 import net.minecraft.item.ItemStack;
 import net.minecraft.item.Items;
+import net.minecraft.nbt.CompoundTag;
 import net.minecraft.particle.ParticleEffect;
 import net.minecraft.recipe.CraftingRecipe;
 import net.minecraft.recipe.Ingredient;
 import net.minecraft.server.world.ServerWorld;
+import net.minecraft.sound.SoundCategory;
+import net.minecraft.sound.SoundEvent;
+import net.minecraft.sound.SoundEvents;
 import net.minecraft.util.Identifier;
 import net.minecraft.world.LocalDifficulty;
 import net.minecraft.world.World;
+import org.jetbrains.annotations.NotNull;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Overwrite;
 import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.Redirect;
+import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 import java.util.ArrayList;
@@ -61,7 +67,8 @@ import java.util.Objects;
 @Mixin(PiglinEntity.class)
 public abstract class PiglinEmotions extends HostileEntity implements CrossbowUser, EmotionalPiglins {
     
-    @Shadow private BasicInventory inventory;
+    private static @NotNull ItemStack STICK_ITEM = new ItemStack(Items.STICK);
+    @Shadow private SimpleInventory inventory;
     
     private boolean shareGold = false;
     
@@ -69,8 +76,8 @@ public abstract class PiglinEmotions extends HostileEntity implements CrossbowUs
         super(entityType, world);
     }
     
-    @Redirect(at = @At(value = "INVOKE", target = "net/minecraft/inventory/BasicInventory.addStack(Lnet/minecraft/item/ItemStack;)Lnet/minecraft/item/ItemStack;"), method = "addItem")
-    protected ItemStack onAddToInventory(BasicInventory inventory, ItemStack stack) {
+    @Redirect(at = @At(value = "INVOKE", target = "net/minecraft/inventory/SimpleInventory.addStack(Lnet/minecraft/item/ItemStack;)Lnet/minecraft/item/ItemStack;"), method = "addItem")
+    protected ItemStack onAddToInventory(SimpleInventory inventory, ItemStack stack) {
         if ((!stack.isEmpty())) {
             if (stack.getItem() == Items.GOLD_BLOCK) {
                 int blocks = stack.getCount();
@@ -82,7 +89,7 @@ public abstract class PiglinEmotions extends HostileEntity implements CrossbowUs
         return inventory.addStack( stack );
     }
     
-    private ItemStack addGoldToInventory(ItemStack stack, boolean traded) {
+    private ItemStack addGoldToInventory(@NotNull ItemStack stack, boolean traded) {
         if (traded) {
             EnchantmentHelper.set(new HashMap<Enchantment, Integer>() {{
                 put(Enchantments.VANISHING_CURSE, 1);
@@ -96,12 +103,30 @@ public abstract class PiglinEmotions extends HostileEntity implements CrossbowUs
         this.craftingCheck();
     }
     
+    @Inject(at = @At("TAIL"), method = "readCustomDataFromTag")
+    public void onReadFromTag(@NotNull CompoundTag tag, @NotNull CallbackInfo callback) {
+        for ( EquipmentSlot slot : EquipmentSlot.values() )
+            if ( slot.getType() == EquipmentSlot.Type.ARMOR && this.getEquippedStack(slot).isEmpty() )
+                return;
+        this.shareGold = true;
+    }
+    
+    @Override
+    public SimpleInventory getInventory() {
+        return this.inventory;
+    }
+    
+    @Override
+    public boolean hasFullArmorSet() {
+        return this.shareGold;
+    }
+    
     /**
      * Show a status particle effect around piglins
      * @param particle The particle effect to show around the piglin
      */
     @Override
-    public void produceParticles(ParticleEffect particle) {
+    public void produceParticles(@NotNull ParticleEffect particle) {
         // Loop 5 times
         for( int i = 0; i < 5; ++i ) {
             double d = this.random.nextGaussian() * 0.02D;
@@ -115,9 +140,10 @@ public abstract class PiglinEmotions extends HostileEntity implements CrossbowUs
     }
     
     @Override
-    public void incrementGold(ItemStack stack) {
-        this.addGoldToInventory(stack.copy(), true);
+    public ItemStack incrementGold(@NotNull ItemStack stack) {
+        ItemStack remainder = this.addGoldToInventory(stack.copy(), true);
         this.craftingCheck();
+        return remainder;
     }
     
     /**
@@ -133,7 +159,7 @@ public abstract class PiglinEmotions extends HostileEntity implements CrossbowUs
             .forEach(this::dropStack); // Drop all inventory items
     }
     
-    private void craftingCheck() {
+    public void craftingCheck() {
         if (!this.inventory.isEmpty()) {
             // Count the number of armors we're wearing
             int armors = 0;
@@ -150,8 +176,10 @@ public abstract class PiglinEmotions extends HostileEntity implements CrossbowUs
                 }
                 
                 ItemStack createStack = this.craftArmorFromInventory(slot);
-                if (!createStack.isEmpty())
+                if (!createStack.isEmpty()) {
+                    this.world.playSoundFromEntity(null, this, SoundEvents.ITEM_ARMOR_EQUIP_GOLD, SoundCategory.AMBIENT, 1.0F, 1.0F);
                     this.equipStack(slot, createStack);
+                }
             }
             
             // Attempt to give gold to a different Piglin
@@ -160,7 +188,7 @@ public abstract class PiglinEmotions extends HostileEntity implements CrossbowUs
     }
     private ItemStack craftArmorFromInventory(EquipmentSlot slot) {
         // Find the recipe for the equipment slot
-        CraftingRecipe recipe = getArmorRecipe(this.world, getGoldArmorRecipeId(slot));
+        CraftingRecipe recipe = PiglinEmotions.getArmorRecipe(this.world, PiglinEmotions.getGoldArmorRecipeId(slot));
         if (recipe == null) // Check that a recipe was found
             return ItemStack.EMPTY;
         
@@ -176,8 +204,8 @@ public abstract class PiglinEmotions extends HostileEntity implements CrossbowUs
             
             // Remove
             for ( int iSlot = 0; iSlot < this.inventory.size(); iSlot++ ) {
-                ItemStack iStack = this.inventory.getStack( iSlot );
-                if ( !ingredient.test( iStack ) ) // If not match, skip slot
+                ItemStack iStack = this.inventory.getStack(iSlot);
+                if ( !ingredient.test(iStack) ) // If not match, skip slot
                     continue;
                 
                 // Decrement and stop searching the inventory
@@ -186,6 +214,9 @@ public abstract class PiglinEmotions extends HostileEntity implements CrossbowUs
             }
             
             if (!hasIngredient) {
+                if ( ingredient.test(PiglinEmotions.STICK_ITEM) )
+                    continue;
+                
                 hasAllIngredients = false;
                 break;
             }
@@ -200,7 +231,8 @@ public abstract class PiglinEmotions extends HostileEntity implements CrossbowUs
             float f = difficulty.getClampedLocalDifficulty();
             
             // Clone the recipe output (Or you modify the recipe!)
-            ItemStack output = recipe.getOutput().copy();
+            ItemStack output = recipe.getOutput()
+                .copy();
             
             // Attempt to enchant the item
             if (this.random.nextFloat() < 0.5F * f)

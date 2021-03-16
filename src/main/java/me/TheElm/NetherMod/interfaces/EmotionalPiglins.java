@@ -1,6 +1,6 @@
 /*
  * This software is licensed under the MIT License
- * https://github.com/GStefanowich/MC-Server-Protection
+ * https://github.com/GStefanowich/MC-Nether-Mod
  *
  * Copyright (c) 2019 Gregory Stefanowich
  *
@@ -25,8 +25,10 @@
 
 package me.TheElm.NetherMod.interfaces;
 
+import net.minecraft.inventory.SimpleInventory;
 import net.minecraft.item.ItemStack;
 import net.minecraft.particle.ParticleEffect;
+import org.jetbrains.annotations.NotNull;
 
 public interface EmotionalPiglins {
     
@@ -34,13 +36,13 @@ public interface EmotionalPiglins {
      * Produce Particles at the Piglin
      * @param particle The particle type to spawn at the Piglin
      */
-    void produceParticles(ParticleEffect particle);
+    void produceParticles(@NotNull ParticleEffect particle);
     
     /**
      * Called when giving an itemstack to a piglin
      * @param stack An ItemStack that was traded to the Piglin
      */
-    void incrementGold(ItemStack stack);
+    ItemStack incrementGold(@NotNull ItemStack stack);
     
     /**
      * Called when giving stacks of items to a piglin
@@ -50,5 +52,18 @@ public interface EmotionalPiglins {
         for (ItemStack stack : stacks)
             this.incrementGold(stack);
     }
+    
+    /**
+     * Get the piglins inventory
+     * @return
+     */
+    SimpleInventory getInventory();
+    
+    /**
+     * If the piglin has a full set of gold armor
+     * @return
+     */
+    boolean hasFullArmorSet();
+    void craftingCheck();
     
 }

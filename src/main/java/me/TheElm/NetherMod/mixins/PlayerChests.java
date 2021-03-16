@@ -1,6 +1,6 @@
 /*
  * This software is licensed under the MIT License
- * https://github.com/GStefanowich/MC-Server-Protection
+ * https://github.com/GStefanowich/MC-Nether-Mod
  *
  * Copyright (c) 2019 Gregory Stefanowich
  *
@@ -30,7 +30,6 @@ import net.minecraft.block.BlockState;
 import net.minecraft.block.entity.BlockEntityType;
 import net.minecraft.block.entity.ChestBlockEntity;
 import net.minecraft.block.entity.LootableContainerBlockEntity;
-import net.minecraft.client.block.ChestAnimationProgress;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.util.Tickable;
 import org.spongepowered.asm.mixin.Mixin;
@@ -40,7 +39,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 @Mixin(ChestBlockEntity.class)
-public abstract class PlayerChests extends LootableContainerBlockEntity implements ChestAnimationProgress, Tickable, PlayerChest {
+public abstract class PlayerChests extends LootableContainerBlockEntity implements Tickable, PlayerChest {
     
     private boolean belongsToPlayer = false;
     

@@ -1,6 +1,6 @@
 /*
  * This software is licensed under the MIT License
- * https://github.com/GStefanowich/MC-Server-Protection
+ * https://github.com/GStefanowich/MC-Nether-Mod
  *
  * Copyright (c) 2019 Gregory Stefanowich
  *

@@ -1,6 +1,6 @@
 /*
  * This software is licensed under the MIT License
- * https://github.com/GStefanowich/MC-Server-Protection
+ * https://github.com/GStefanowich/MC-Nether-Mod
  *
  * Copyright (c) 2019 Gregory Stefanowich
  *
@@ -63,11 +63,11 @@ public abstract class ChestPlacement extends AbstractChestBlock<ChestBlockEntity
             ((PlayerChest)blockEntity).setPlayers(true);
     }
     
-    @Redirect(at = @At(value = "INVOKE", target = "net/minecraft/entity/mob/PiglinBrain.onGoldBlockBroken(Lnet/minecraft/entity/player/PlayerEntity;)V"), method = "onUse")
-    public void onUse(PlayerEntity playerTarget, BlockState state, World world, BlockPos pos, PlayerEntity player, Hand hand, BlockHitResult hit) {
+    @Redirect(at = @At(value = "INVOKE", target = "net/minecraft/entity/mob/PiglinBrain.onGuardedBlockInteracted(Lnet/minecraft/entity/player/PlayerEntity;Z)V"), method = "onUse")
+    public void onUse(PlayerEntity playerTarget, boolean open, BlockState state, World world, BlockPos pos, PlayerEntity player, Hand hand, BlockHitResult hit) {
         BlockEntity entity = world.getBlockEntity(pos);
         if (!(entity instanceof PlayerChest && ((PlayerChest)entity).isPlayers()))
-            PiglinBrain.onGoldBlockBroken(playerTarget);
+            PiglinBrain.onGuardedBlockInteracted(playerTarget, open);
     }
     
 }

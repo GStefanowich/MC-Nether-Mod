@@ -2,12 +2,12 @@
   "schemaVersion": 1,
   "id": "thats-my-chest",
   "version": "${version}",
-
   "name": "That's My Chest!",
   "description": "Changes some Nether Mechanics related to Piglins.",
   "authors": [
     "TheElm"
   ],
+  
   "contact": {
     "homepage": "",
     "sources": "https://github.com/GStefanowich/MC-Nether-Mod",
@@ -24,8 +24,7 @@
   ],
 
   "depends": {
-    "fabricloader": ">=0.7.1",
-    "minecraft": "1.16.*"
+    "fabricloader": ">=0.7.4"
   },
   "suggests": {}
 }
