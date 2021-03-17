@@ -26,16 +26,19 @@
 package me.TheElm.NetherMod.mixins;
 
 import me.TheElm.NetherMod.interfaces.EmotionalPiglins;
+import me.TheElm.NetherMod.utils.EntityUtils;
+import me.TheElm.NetherMod.utils.ItemUtils;
 import net.minecraft.enchantment.Enchantment;
 import net.minecraft.enchantment.EnchantmentHelper;
 import net.minecraft.enchantment.Enchantments;
 import net.minecraft.entity.CrossbowUser;
 import net.minecraft.entity.EntityType;
 import net.minecraft.entity.EquipmentSlot;
-import net.minecraft.entity.damage.DamageSource;
 import net.minecraft.entity.mob.HostileEntity;
+import net.minecraft.entity.mob.PiglinBrain;
 import net.minecraft.entity.mob.PiglinEntity;
 import net.minecraft.inventory.SimpleInventory;
+import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
 import net.minecraft.item.Items;
 import net.minecraft.nbt.CompoundTag;
@@ -44,14 +47,13 @@ import net.minecraft.recipe.CraftingRecipe;
 import net.minecraft.recipe.Ingredient;
 import net.minecraft.server.world.ServerWorld;
 import net.minecraft.sound.SoundCategory;
-import net.minecraft.sound.SoundEvent;
 import net.minecraft.sound.SoundEvents;
 import net.minecraft.util.Identifier;
+import net.minecraft.util.registry.Registry;
 import net.minecraft.world.LocalDifficulty;
 import net.minecraft.world.World;
 import org.jetbrains.annotations.NotNull;
 import org.spongepowered.asm.mixin.Mixin;
-import org.spongepowered.asm.mixin.Overwrite;
 import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
@@ -60,9 +62,12 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Objects;
+import java.util.Optional;
+import java.util.stream.Stream;
 
 @Mixin(PiglinEntity.class)
 public abstract class PiglinEmotions extends HostileEntity implements CrossbowUser, EmotionalPiglins {
@@ -76,28 +81,6 @@ public abstract class PiglinEmotions extends HostileEntity implements CrossbowUs
         super(entityType, world);
     }
     
-    @Redirect(at = @At(value = "INVOKE", target = "net/minecraft/inventory/SimpleInventory.addStack(Lnet/minecraft/item/ItemStack;)Lnet/minecraft/item/ItemStack;"), method = "addItem")
-    protected ItemStack onAddToInventory(SimpleInventory inventory, ItemStack stack) {
-        if ((!stack.isEmpty())) {
-            if (stack.getItem() == Items.GOLD_BLOCK) {
-                int blocks = stack.getCount();
-                return this.addGoldToInventory(new ItemStack(Items.GOLD_INGOT, blocks * 9), false);
-            } else if (stack.getItem() == Items.GOLD_INGOT)
-                return this.addGoldToInventory(stack, true);
-        }
-        
-        return inventory.addStack( stack );
-    }
-    
-    private ItemStack addGoldToInventory(@NotNull ItemStack stack, boolean traded) {
-        if (traded) {
-            EnchantmentHelper.set(new HashMap<Enchantment, Integer>() {{
-                put(Enchantments.VANISHING_CURSE, 1);
-            }}, stack);
-        }
-        return this.inventory.addStack(stack);
-    }
-    
     @Inject(at = @At("RETURN"), method = "addItem")
     protected void onAddItem(ItemStack stack, CallbackInfoReturnable<ItemStack> callback) {
         this.craftingCheck();
@@ -105,10 +88,7 @@ public abstract class PiglinEmotions extends HostileEntity implements CrossbowUs
     
     @Inject(at = @At("TAIL"), method = "readCustomDataFromTag")
     public void onReadFromTag(@NotNull CompoundTag tag, @NotNull CallbackInfo callback) {
-        for ( EquipmentSlot slot : EquipmentSlot.values() )
-            if ( slot.getType() == EquipmentSlot.Type.ARMOR && this.getEquippedStack(slot).isEmpty() )
-                return;
-        this.shareGold = true;
+        this.shareGold = EntityUtils.hasFullArmorSet(this);
     }
     
     @Override
@@ -141,9 +121,43 @@ public abstract class PiglinEmotions extends HostileEntity implements CrossbowUs
     
     @Override
     public ItemStack incrementGold(@NotNull ItemStack stack) {
-        ItemStack remainder = this.addGoldToInventory(stack.copy(), true);
+        ItemStack remainder = PiglinEmotions.addTradedItemToInventory(this.inventory, stack.copy(), true);
         this.craftingCheck();
         return remainder;
+    }
+    
+    @Redirect(at = @At(value = "INVOKE", target = "net/minecraft/inventory/SimpleInventory.addStack(Lnet/minecraft/item/ItemStack;)Lnet/minecraft/item/ItemStack;"), method = "addItem")
+    protected ItemStack onAddToInventory(@NotNull SimpleInventory inventory, @NotNull ItemStack stack) {
+        // If the stack picked up is NOT EMPTY
+        if (!stack.isEmpty()) {
+            // If the item is the BARTER ITEM, add it to the inventory for later
+            if (stack.getItem() == PiglinBrain.BARTERING_ITEM)
+                return PiglinEmotions.addTradedItemToInventory(inventory, stack, true);
+            
+            // If the item can be MADE into the BARTER ITEM, Attempt crafting it
+            Optional<CraftingRecipe> recipes = PiglinEmotions.getMakesTradingItem(this.world, stack);
+            if ( recipes.isPresent() ) {
+                CraftingRecipe recipe = recipes.get();
+                
+                // Get the output of the crafting
+                ItemStack makes = recipe.getOutput();
+                PiglinEmotions.addVanishingCurse(makes);
+                
+                // Try to add the crafted items into the inventory
+                while ( !stack.isEmpty() && inventory.canInsert(makes) ) {
+                    // Decrement the item used to make the recipe
+                    stack.decrement(1);
+                    ItemStack remainder = inventory.addStack(makes);
+                    
+                    // Drop any leftover crafted items
+                    if ( !remainder.isEmpty() ) // Drop the items WITHOUT the VANISHING curse
+                        this.dropStack(new ItemStack(remainder.getItem(), remainder.getCount()));
+                }
+            }
+        }
+        
+        // Fallback to adding the item to the inventory
+        return inventory.addStack(stack);
     }
     
     /**
@@ -151,12 +165,14 @@ public abstract class PiglinEmotions extends HostileEntity implements CrossbowUs
      * @reason Items in a Piglins inventory that have Curse of Vanishing are not destroyed
      * @author TheElm
      */
-    @Overwrite
-    public void dropEquipment(DamageSource source, int lootingMultiplier, boolean allowDrops) {
-        super.dropEquipment(source, lootingMultiplier, allowDrops);
-        this.inventory.clearToList().stream()
-            .filter(stack -> !EnchantmentHelper.hasVanishingCurse(stack)) // Filter out cursed items
-            .forEach(this::dropStack); // Drop all inventory items
+    @Redirect(at = @At(value = "INVOKE", target = "net/minecraft/inventory/SimpleInventory.clearToList()Ljava/util/List;"), method = "dropEquipment")
+    public List<ItemStack> onDropEquipment(@NotNull SimpleInventory inventory) {
+        return ItemUtils.getDroppableItems(inventory.clearToList());
+    }
+    
+    @Redirect(at = @At(value = "INVOKE", target = "net/minecraft/inventory/SimpleInventory.clearToList()Ljava/util/List;"), method = "zombify")
+    public List<ItemStack> onZombify(@NotNull SimpleInventory inventory) {
+        return ItemUtils.getDroppableItems(inventory.clearToList());
     }
     
     public void craftingCheck() {
@@ -171,11 +187,12 @@ public abstract class PiglinEmotions extends HostileEntity implements CrossbowUs
                 // Skip to the next armor slot
                 if (!armorStack.isEmpty()) {
                     // If the slot is occupied by armor
-                    if (slot.getType() == EquipmentSlot.Type.ARMOR) armors++;
+                    if (slot.getType() == EquipmentSlot.Type.ARMOR)
+                        armors++;
                     continue;
                 }
                 
-                ItemStack createStack = this.craftArmorFromInventory(slot);
+                ItemStack createStack = this.tryCraftItem(slot);
                 if (!createStack.isEmpty()) {
                     this.world.playSoundFromEntity(null, this, SoundEvents.ITEM_ARMOR_EQUIP_GOLD, SoundCategory.AMBIENT, 1.0F, 1.0F);
                     this.equipStack(slot, createStack);
@@ -186,11 +203,26 @@ public abstract class PiglinEmotions extends HostileEntity implements CrossbowUs
             this.shareGold = (armors >= 4);
         }
     }
-    private ItemStack craftArmorFromInventory(EquipmentSlot slot) {
+    
+    @Override
+    public boolean canCraftItem(@NotNull Item item) {
+        return !this.tryCraftItem(PiglinEmotions.getItemRecipeId(item), false)
+            .isEmpty();
+    }
+    
+    @Override
+    public @NotNull ItemStack tryCraftItem(@NotNull Item item) {
+        return this.tryCraftItem(PiglinEmotions.getItemRecipeId(item), true);
+    }
+    private @NotNull ItemStack tryCraftItem(@NotNull EquipmentSlot slot) {
+        return this.tryCraftItem(PiglinEmotions.getGoldArmorRecipeId(slot), true);
+    }
+    private @NotNull ItemStack tryCraftItem(@NotNull Optional<Identifier> identifier, final boolean doCraft) {
         // Find the recipe for the equipment slot
-        CraftingRecipe recipe = PiglinEmotions.getArmorRecipe(this.world, PiglinEmotions.getGoldArmorRecipeId(slot));
-        if (recipe == null) // Check that a recipe was found
+        Optional<CraftingRecipe> recipes = PiglinEmotions.getArmorRecipe(this.world, identifier);
+        if (!recipes.isPresent()) // Check that a recipe was found
             return ItemStack.EMPTY;
+        CraftingRecipe recipe = recipes.get();
         
         // Check for all of the ingredients
         boolean hasAllIngredients = true;
@@ -216,57 +248,74 @@ public abstract class PiglinEmotions extends HostileEntity implements CrossbowUs
             if (!hasIngredient) {
                 if ( ingredient.test(PiglinEmotions.STICK_ITEM) )
                     continue;
-                
+            
                 hasAllIngredients = false;
                 break;
             }
         }
         
         // If all of the ingredients are present
-        if (!hasAllIngredients)
+        if (!hasAllIngredients || !doCraft)
             craftingTable.forEach(this.inventory::addStack);
-        else {
-            // "Craft" the item
-            LocalDifficulty difficulty = this.world.getLocalDifficulty(this.getBlockPos());
-            float f = difficulty.getClampedLocalDifficulty();
-            
+        if ( hasAllIngredients ) {
             // Clone the recipe output (Or you modify the recipe!)
             ItemStack output = recipe.getOutput()
                 .copy();
             
-            // Attempt to enchant the item
-            if (this.random.nextFloat() < 0.5F * f)
-                return EnchantmentHelper.enchant(random, output, (int) (5.0F + f * (float) this.random.nextInt(18)), false);
+            if ( doCraft ) {
+                // Get enchantment possibilities based off of difficulty
+                LocalDifficulty difficulty = this.world.getLocalDifficulty(this.getBlockPos());
+                float f = difficulty.getClampedLocalDifficulty();
+                
+                // Attempt to enchant the item
+                if (this.random.nextFloat() < 0.5F * f)
+                    return EnchantmentHelper.enchant(random, output, (int) (5.0F + f * (float) this.random.nextInt(18)), false);
+                if ( !this.world.isClient )
+                    this.world.playSoundFromEntity(null, this, SoundEvents.BLOCK_ANVIL_USE, SoundCategory.AMBIENT, 1.0F, 1.0F);
+            }
+            
             return output;
         }
         
         return ItemStack.EMPTY;
     }
     
-    private static CraftingRecipe getArmorRecipe(World world, Identifier identifier) {
-        if (identifier == null) return null;
-        return world.getRecipeManager().values().stream().map(recipe -> {
-            if (recipe instanceof CraftingRecipe)
-                return (CraftingRecipe) recipe;
-            return null;
-        }).filter(Objects::nonNull).filter(recipe -> recipe.getId().equals(identifier)).findFirst().orElse(null);
+    private static @NotNull ItemStack addTradedItemToInventory( @NotNull SimpleInventory inventory, @NotNull ItemStack stack, boolean traded) {
+        if (traded && !EnchantmentHelper.hasVanishingCurse(stack))
+            PiglinEmotions.addVanishingCurse(stack);
+        return inventory.addStack(stack);
     }
-    private static Identifier getGoldArmorRecipeId(EquipmentSlot slot) {
-        switch (slot) {
-            case FEET:
-                return new Identifier("golden_boots");
-            case LEGS:
-                return new Identifier("golden_leggings");
-            case CHEST:
-                return new Identifier("golden_chestplate");
-            case HEAD:
-                return new Identifier("golden_helmet");
-            case MAINHAND:
-                return new Identifier("golden_sword");
-            case OFFHAND:
-                return new Identifier("crossbow");
-            default:
-                return null;
-        }
+    private static @NotNull Optional<CraftingRecipe> getArmorRecipe(@NotNull World world, @NotNull Optional<Identifier> identifier) {
+        return identifier.flatMap((value) -> PiglinEmotions.getWorldCraftingRecipes(world)
+            .filter(recipe -> recipe.getId().equals(value))
+            .findFirst());
+    }
+    private static @NotNull Optional<CraftingRecipe> getMakesTradingItem( @NotNull World world, @NotNull ItemStack stack) {
+        return PiglinEmotions.getWorldCraftingRecipes(world)
+            .filter((recipe) -> {
+                Collection<Ingredient> ingredients = recipe.getPreviewInputs();
+                return ingredients.size() == 1 && recipe.getOutput().getItem() == PiglinBrain.BARTERING_ITEM && ingredients.stream()
+                    .anyMatch(ingredient -> ingredient.test(stack));
+            })
+            .findFirst();
+    }
+    private static @NotNull Optional<Identifier> getGoldArmorRecipeId(@NotNull EquipmentSlot slot) {
+        return ItemUtils.getOptionalPiglinEquipmentSlotItem(slot)
+            .flatMap(PiglinEmotions::getItemRecipeId);
+    }
+    private static @NotNull Optional<Identifier> getItemRecipeId(@NotNull Item slot) {
+        return Optional.of(Registry.ITEM.getId(slot));
+    }
+    private static @NotNull Stream<CraftingRecipe> getWorldCraftingRecipes(@NotNull World world) {
+        return world.getRecipeManager()
+            .values()
+            .stream()
+            .map((recipe) -> recipe instanceof CraftingRecipe ? (CraftingRecipe) recipe : null)
+            .filter(Objects::nonNull);
+    }
+    private static void addVanishingCurse(@NotNull ItemStack stack) {
+        EnchantmentHelper.set(new HashMap<Enchantment, Integer>() {{
+            put(Enchantments.VANISHING_CURSE, 1);
+        }}, stack);
     }
 }

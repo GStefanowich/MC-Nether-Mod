@@ -26,6 +26,7 @@
 package me.TheElm.NetherMod.interfaces;
 
 import net.minecraft.inventory.SimpleInventory;
+import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
 import net.minecraft.particle.ParticleEffect;
 import org.jetbrains.annotations.NotNull;
@@ -65,5 +66,8 @@ public interface EmotionalPiglins {
      */
     boolean hasFullArmorSet();
     void craftingCheck();
+    
+    boolean canCraftItem(@NotNull Item item);
+    @NotNull ItemStack tryCraftItem(@NotNull Item item);
     
 }
