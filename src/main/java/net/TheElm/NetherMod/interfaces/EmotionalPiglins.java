@@ -23,7 +23,7 @@
  * SOFTWARE.
  */
 
-package me.TheElm.NetherMod.interfaces;
+package net.TheElm.NetherMod.interfaces;
 
 import net.minecraft.inventory.SimpleInventory;
 import net.minecraft.item.Item;

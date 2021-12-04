@@ -23,9 +23,9 @@
  * SOFTWARE.
  */
 
-package me.TheElm.NetherMod.utils;
+package net.TheElm.NetherMod.utils;
 
-import me.TheElm.NetherMod.interfaces.EmotionalPiglins;
+import net.TheElm.NetherMod.interfaces.EmotionalPiglins;
 import net.minecraft.entity.EquipmentSlot;
 import net.minecraft.entity.LivingEntity;
 import net.minecraft.entity.mob.AbstractPiglinEntity;

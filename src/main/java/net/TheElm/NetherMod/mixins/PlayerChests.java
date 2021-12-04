@@ -23,15 +23,15 @@
  * SOFTWARE.
  */
 
-package me.TheElm.NetherMod.mixins;
+package net.TheElm.NetherMod.mixins;
 
-import me.TheElm.NetherMod.interfaces.PlayerChest;
+import net.TheElm.NetherMod.interfaces.PlayerChest;
 import net.minecraft.block.BlockState;
 import net.minecraft.block.entity.BlockEntityType;
 import net.minecraft.block.entity.ChestBlockEntity;
 import net.minecraft.block.entity.LootableContainerBlockEntity;
-import net.minecraft.nbt.CompoundTag;
-import net.minecraft.util.Tickable;
+import net.minecraft.nbt.NbtCompound;
+import net.minecraft.util.math.BlockPos;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
@@ -39,22 +39,22 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 @Mixin(ChestBlockEntity.class)
-public abstract class PlayerChests extends LootableContainerBlockEntity implements Tickable, PlayerChest {
+public abstract class PlayerChests extends LootableContainerBlockEntity implements PlayerChest {
     
     private boolean belongsToPlayer = false;
     
-    protected PlayerChests(BlockEntityType<?> blockEntityType) {
-        super(blockEntityType);
+    protected PlayerChests(BlockEntityType<?> blockEntityType, BlockPos blockPos, BlockState blockState) {
+        super(blockEntityType, blockPos, blockState);
     }
     
-    @Inject(at = @At("TAIL"), method = "fromTag")
-    public void onFromTag(BlockState state, CompoundTag tag, CallbackInfo callback) {
+    @Inject(at = @At("TAIL"), method = "readNbt")
+    public void onFromTag(NbtCompound tag, CallbackInfo callback) {
         // If the chest was placed by a player, read that value
         this.belongsToPlayer = tag.contains("playerPlaced", 1) && tag.getBoolean("playerPlaced");
     }
     
-    @Inject(at = @At("TAIL"), method = "toTag")
-    public void onToTag(CompoundTag tag, CallbackInfoReturnable<CompoundTag> callback) {
+    @Inject(at = @At("TAIL"), method = "writeNbt")
+    public void onToTag(NbtCompound tag, CallbackInfo callback) {
         // If the chest was placed by a player, save that information
         if (this.belongsToPlayer)
             tag.putBoolean("playerPlaced", this.belongsToPlayer);

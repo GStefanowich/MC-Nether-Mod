@@ -23,11 +23,11 @@
  * SOFTWARE.
  */
 
-package me.TheElm.NetherMod.goals;
+package net.TheElm.NetherMod.goals;
 
 import com.google.common.collect.ImmutableMap;
-import me.TheElm.NetherMod.interfaces.EmotionalPiglins;
-import me.TheElm.NetherMod.utils.EntityUtils;
+import net.TheElm.NetherMod.interfaces.EmotionalPiglins;
+import net.TheElm.NetherMod.utils.EntityUtils;
 import net.minecraft.entity.ai.brain.Brain;
 import net.minecraft.entity.ai.brain.MemoryModuleState;
 import net.minecraft.entity.ai.brain.MemoryModuleType;

@@ -23,11 +23,11 @@
  * SOFTWARE.
  */
 
-package me.TheElm.NetherMod.mixins;
+package net.TheElm.NetherMod.mixins;
 
 import com.google.common.collect.ImmutableList;
-import me.TheElm.NetherMod.goals.PiglinTradingGoal;
-import me.TheElm.NetherMod.interfaces.EmotionalPiglins;
+import net.TheElm.NetherMod.goals.PiglinTradingGoal;
+import net.TheElm.NetherMod.interfaces.EmotionalPiglins;
 import net.minecraft.entity.LivingEntity;
 import net.minecraft.entity.ai.brain.Brain;
 import net.minecraft.entity.mob.AbstractPiglinEntity;

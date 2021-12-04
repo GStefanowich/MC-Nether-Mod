@@ -23,9 +23,9 @@
  * SOFTWARE.
  */
 
-package me.TheElm.NetherMod.mixins;
+package net.TheElm.NetherMod.mixins;
 
-import me.TheElm.NetherMod.interfaces.PlayerChest;
+import net.TheElm.NetherMod.interfaces.PlayerChest;
 import net.minecraft.block.AbstractChestBlock;
 import net.minecraft.block.BlockState;
 import net.minecraft.block.ChestBlock;

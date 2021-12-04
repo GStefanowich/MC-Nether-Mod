@@ -23,7 +23,7 @@
  * SOFTWARE.
  */
 
-package me.TheElm.NetherMod.utils;
+package net.TheElm.NetherMod.utils;
 
 import net.minecraft.enchantment.EnchantmentHelper;
 import net.minecraft.entity.EquipmentSlot;

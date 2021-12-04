@@ -23,11 +23,11 @@
  * SOFTWARE.
  */
 
-package me.TheElm.NetherMod.mixins;
+package net.TheElm.NetherMod.mixins;
 
-import me.TheElm.NetherMod.interfaces.EmotionalPiglins;
-import me.TheElm.NetherMod.utils.EntityUtils;
-import me.TheElm.NetherMod.utils.ItemUtils;
+import net.TheElm.NetherMod.interfaces.EmotionalPiglins;
+import net.TheElm.NetherMod.utils.EntityUtils;
+import net.TheElm.NetherMod.utils.ItemUtils;
 import net.minecraft.enchantment.Enchantment;
 import net.minecraft.enchantment.EnchantmentHelper;
 import net.minecraft.enchantment.Enchantments;
@@ -41,7 +41,7 @@ import net.minecraft.inventory.SimpleInventory;
 import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
 import net.minecraft.item.Items;
-import net.minecraft.nbt.CompoundTag;
+import net.minecraft.nbt.NbtCompound;
 import net.minecraft.particle.ParticleEffect;
 import net.minecraft.recipe.CraftingRecipe;
 import net.minecraft.recipe.Ingredient;
@@ -86,8 +86,8 @@ public abstract class PiglinEmotions extends HostileEntity implements CrossbowUs
         this.craftingCheck();
     }
     
-    @Inject(at = @At("TAIL"), method = "readCustomDataFromTag")
-    public void onReadFromTag(@NotNull CompoundTag tag, @NotNull CallbackInfo callback) {
+    @Inject(at = @At("TAIL"), method = "readCustomDataFromNbt")
+    public void onReadFromTag(@NotNull NbtCompound tag, @NotNull CallbackInfo callback) {
         this.shareGold = EntityUtils.hasFullArmorSet(this);
     }
     
@@ -160,11 +160,6 @@ public abstract class PiglinEmotions extends HostileEntity implements CrossbowUs
         return inventory.addStack(stack);
     }
     
-    /**
-     * Overwrite of the Vanilla DropEquipment to remove cursed items from the inventory
-     * @reason Items in a Piglins inventory that have Curse of Vanishing are not destroyed
-     * @author TheElm
-     */
     @Redirect(at = @At(value = "INVOKE", target = "net/minecraft/inventory/SimpleInventory.clearToList()Ljava/util/List;"), method = "dropEquipment")
     public List<ItemStack> onDropEquipment(@NotNull SimpleInventory inventory) {
         return ItemUtils.getDroppableItems(inventory.clearToList());
@@ -227,7 +222,7 @@ public abstract class PiglinEmotions extends HostileEntity implements CrossbowUs
         // Check for all of the ingredients
         boolean hasAllIngredients = true;
         
-        List<Ingredient> ingredients = recipe.getPreviewInputs();
+        List<Ingredient> ingredients = recipe.getIngredients();
         List<ItemStack> craftingTable = new ArrayList<>();
         
         // Remove the ingredients
@@ -293,7 +288,7 @@ public abstract class PiglinEmotions extends HostileEntity implements CrossbowUs
     private static @NotNull Optional<CraftingRecipe> getMakesTradingItem( @NotNull World world, @NotNull ItemStack stack) {
         return PiglinEmotions.getWorldCraftingRecipes(world)
             .filter((recipe) -> {
-                Collection<Ingredient> ingredients = recipe.getPreviewInputs();
+                Collection<Ingredient> ingredients = recipe.getIngredients();
                 return ingredients.size() == 1 && recipe.getOutput().getItem() == PiglinBrain.BARTERING_ITEM && ingredients.stream()
                     .anyMatch(ingredient -> ingredient.test(stack));
             })

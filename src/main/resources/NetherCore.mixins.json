@@ -1,8 +1,7 @@
 {
   "required": true,
-  "minVersion": "0.8",
-  "package": "me.TheElm.NetherMod.mixins",
-  "compatibilityLevel": "JAVA_8",
+  "package": "net.TheElm.NetherMod.mixins",
+  "compatibilityLevel": "JAVA_17",
   "mixins": [
     "PiglinEmotions",
     "PiglinSigns",

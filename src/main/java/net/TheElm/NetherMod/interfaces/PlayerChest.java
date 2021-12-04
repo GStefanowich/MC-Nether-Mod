@@ -23,7 +23,11 @@
  * SOFTWARE.
  */
 
-package me.TheElm.NetherMod;
+package net.TheElm.NetherMod.interfaces;
 
-public class ServerCore {
+public interface PlayerChest {
+    
+    void setPlayers( boolean players );
+    boolean isPlayers();
+    
 }
